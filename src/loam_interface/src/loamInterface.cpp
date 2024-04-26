@@ -39,7 +39,8 @@ class InterfaceHandler
   tf::TransformListener listener_;
 
   nav_msgs::Odometry odomData;
-  tf::StampedTransform odomTrans;
+  tf::StampedTransform sensorTrans;
+  tf::StampedTransform mapTrans;
 
 
   ros::Subscriber odom_sub_;
@@ -49,10 +50,8 @@ class InterfaceHandler
 
   tf::TransformBroadcaster tfBroadcaster;
 
-  bool flipStateEstimation = false;
+  bool frameAInitialized  = false;
   bool flipRegisteredScan = false;
-  bool sendTF = true;
-  bool reverseTF = false;
 
   InterfaceHandler(ros::NodeHandle &nh): nh_(nh)
   {
@@ -63,84 +62,91 @@ class InterfaceHandler
     odometry_pub_ = nh.advertise<nav_msgs::Odometry> ("/state_estimation", 5);
 
     pcl_pub_ = nh.advertise<sensor_msgs::PointCloud2> ("/registered_scan", 5);
+
   };
 
   void odometryCallback(const nav_msgs::Odometry::ConstPtr& odom)
   {
-    double roll, pitch, yaw;
-    geometry_msgs::Quaternion geoQuat = odom->pose.pose.orientation;
     odomData = *odom;
-
-    if (flipStateEstimation) {
-      tf::Matrix3x3(tf::Quaternion(geoQuat.z, -geoQuat.x, -geoQuat.y, geoQuat.w)).getRPY(roll, pitch, yaw);
-
-      pitch = -pitch;
-      yaw = -yaw;
-
-      geoQuat = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
-
-      odomData.pose.pose.orientation = geoQuat;
-      odomData.pose.pose.position.x = odom->pose.pose.position.z;
-      odomData.pose.pose.position.y = odom->pose.pose.position.x;
-      odomData.pose.pose.position.z = odom->pose.pose.position.y;
-    }
 
     // publish odometry messages
     odomData.header.frame_id = "map";
     odomData.child_frame_id = "sensor";
     odometry_pub_.publish(odomData);
 
-    // publish tf messages
-    odomTrans.stamp_ = odom->header.stamp;
-    odomTrans.frame_id_ = "map";
-    odomTrans.child_frame_id_ = "sensor";
-    odomTrans.setRotation(tf::Quaternion(geoQuat.x, geoQuat.y, geoQuat.z, geoQuat.w));
-    odomTrans.setOrigin(tf::Vector3(odomData.pose.pose.position.x, odomData.pose.pose.position.y, odomData.pose.pose.position.z));
+    // publish tf sensor messages
+    sensorTrans.stamp_ = odom->header.stamp;
+    sensorTrans.frame_id_ = "turtlebot/kobuki/realsense_depth";
+    sensorTrans.child_frame_id_ = "sensor";
+    sensorTrans.setRotation(tf::Quaternion(0.0, 0.0, 0.0, 1.0));
+    sensorTrans.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
 
-    if (sendTF) {
-      if (!reverseTF) {
-        tfBroadcaster.sendTransform(odomTrans);
-      } else {
-        tfBroadcaster.sendTransform(tf::StampedTransform(odomTrans.inverse(), odom->header.stamp, "sensor", "map"));
-      }
-    }
+    tfBroadcaster.sendTransform(sensorTrans);
+
+    // publish tf map messages
+    mapTrans.stamp_ = odom->header.stamp;
+    mapTrans.frame_id_ = "turtlebot/kobuki/base_footprint";
+    mapTrans.child_frame_id_ = "map";
+
+    // Create transform from odometry frame to base frame
+    tf::Transform transformBaseToOdometry;
+    transformBaseToOdometry.setOrigin(tf::Vector3(odomData.pose.pose.position.x,odomData.pose.pose.position.y, odomData.pose.pose.position.z));
+    tf::Quaternion orientation;
+    tf::quaternionMsgToTF(odomData.pose.pose.orientation, orientation);
+    transformBaseToOdometry.setRotation(orientation);
+    
+    // Invert the transform if needed
+    tf::Transform transformOdometryToBase = transformBaseToOdometry.inverse();
+
+    mapTrans.setRotation(transformOdometryToBase.getRotation());
+    mapTrans.setOrigin(transformOdometryToBase.getOrigin());
+    
+    tfBroadcaster.sendTransform(mapTrans);
+
+    frameAInitialized = true;
   }
 
   void laserCloudCallback(const sensor_msgs::PointCloud2ConstPtr& laserCloudIn)
   {
-    pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloud(new pcl::PointCloud<pcl::PointXYZI>());
-    pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudOut(new pcl::PointCloud<pcl::PointXYZI>());
-    laserCloud->clear();
-    pcl::fromROSMsg(*laserCloudIn, *laserCloud);
+    if (frameAInitialized)
+    {
+      pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloud(new pcl::PointCloud<pcl::PointXYZI>());
+      pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudOut(new pcl::PointCloud<pcl::PointXYZI>());
+      laserCloud->clear();
+      pcl::fromROSMsg(*laserCloudIn, *laserCloud);
 
-    // Saving the current key frame of the robot
-    std::string targetFrame = "map";
-    std::string sourceFrame = "turtlebot/kobuki/realsense_depth";
+      // Saving the current key frame of the robot
+      std::string targetFrame = "map";
+      std::string sourceFrame = "turtlebot/kobuki/realsense_depth";
 
-    // Lookup transform
-    tf::StampedTransform transform;
-    listener_.lookupTransform(targetFrame, sourceFrame, ros::Time(), transform);
+      // Lookup transform
+      tf::StampedTransform transform;
 
-    pcl_ros::transformPointCloud(*laserCloud, *laserCloudOut, transform);
+      listener_.lookupTransform(targetFrame, sourceFrame, ros::Time(), transform);
 
-    if (flipRegisteredScan) {
-      int laserCloudSize = laserCloudOut->points.size();
-      for (int i = 0; i < laserCloudSize; i++) {
-        float temp = laserCloud->points[i].x;
-        laserCloudOut->points[i].x = laserCloudOut->points[i].z;
-        laserCloudOut->points[i].z = laserCloudOut->points[i].y;
-        laserCloudOut->points[i].y = temp;
+      pcl_ros::transformPointCloud(*laserCloud, *laserCloudOut, transform);
+
+      if (flipRegisteredScan) {
+        int laserCloudSize = laserCloudOut->points.size();
+        for (int i = 0; i < laserCloudSize; i++) {
+          float temp = laserCloud->points[i].x;
+          laserCloudOut->points[i].x = laserCloudOut->points[i].z;
+          laserCloudOut->points[i].z = laserCloudOut->points[i].y;
+          laserCloudOut->points[i].y = temp;
+        }
       }
-    }
 
-    // publish registered scan messages
-    sensor_msgs::PointCloud2 laserCloud2;
-    pcl::toROSMsg(*laserCloudOut, laserCloud2);
-    laserCloud2.header.stamp = laserCloudIn->header.stamp;
-    laserCloud2.header.frame_id = targetFrame;
-    pcl_pub_.publish(laserCloud2);
+      // publish registered scan messages
+      sensor_msgs::PointCloud2 laserCloud2;
+      pcl::toROSMsg(*laserCloudOut, laserCloud2);
+      laserCloud2.header.stamp = laserCloudIn->header.stamp;
+      laserCloud2.header.frame_id = targetFrame;
+      pcl_pub_.publish(laserCloud2);
+    }
   }
 };
+
+
 
 int main(int argc, char** argv)
 {

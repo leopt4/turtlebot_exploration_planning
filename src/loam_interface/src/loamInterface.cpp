@@ -77,6 +77,7 @@ class InterfaceHandler
     // publish tf sensor messages
     sensorTrans.stamp_ = odom->header.stamp;
     sensorTrans.frame_id_ = "turtlebot/kobuki/realsense_depth";
+    // sensorTrans.frame_id_ = "camera_depth_frame";
     sensorTrans.child_frame_id_ = "sensor";
     sensorTrans.setRotation(tf::Quaternion(0.0, 0.0, 0.0, 1.0));
     sensorTrans.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
@@ -88,6 +89,13 @@ class InterfaceHandler
     mapTrans.frame_id_ = "turtlebot/kobuki/base_footprint";
     mapTrans.child_frame_id_ = "map";
 
+    odomData.pose.pose.position.x = 0.0;
+    odomData.pose.pose.position.y = 0.0;
+    odomData.pose.pose.position.z = 0.0;
+    odomData.pose.pose.orientation.x = 0.0;
+    odomData.pose.pose.orientation.y = 0.0;
+    odomData.pose.pose.orientation.z = 0.0;
+    odomData.pose.pose.orientation.w = 1.0;
     // Create transform from odometry frame to base frame
     tf::Transform transformBaseToOdometry;
     transformBaseToOdometry.setOrigin(tf::Vector3(odomData.pose.pose.position.x,odomData.pose.pose.position.y, odomData.pose.pose.position.z));
@@ -118,6 +126,7 @@ class InterfaceHandler
       // Saving the current key frame of the robot
       std::string targetFrame = "map";
       std::string sourceFrame = "turtlebot/kobuki/realsense_depth";
+      // std::string sourceFrame = "camera_depth_frame";
 
       // Lookup transform
       tf::StampedTransform transform;

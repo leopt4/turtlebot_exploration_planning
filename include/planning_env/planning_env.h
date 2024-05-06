@@ -140,7 +140,7 @@ public:
         rolling_occupancy_grid_->UpdateOccupancy<PCLPointType>(cloud);
         rolling_occupancy_grid_->RayTrace(robot_position_);
         rolling_occupancy_grid_->GetVisualizationCloud(rolling_occupancy_grid_cloud_->cloud_);
-        // rolling_occupancy_grid_cloud_->Publish();
+        rolling_occupancy_grid_cloud_->Publish();
       }
     }
   }
@@ -170,7 +170,7 @@ public:
       vertical_surface_extractor_.ExtractVerticalSurface<PlannerCloudPointType, PlannerCloudPointType>(
           keypose_cloud_->cloud_, vertical_surface_cloud_->cloud_);
       // pcl::copyPointCloud<PlannerCloudPointType, PlannerCloudPointType>(*(keypose_cloud_->cloud_), *(vertical_surface_cloud_->cloud_));
-      // vertical_surface_cloud_->Publish();
+      vertical_surface_cloud_->Publish();
 
       pointcloud_manager_->UpdateOldCloudPoints();
       pointcloud_manager_->UpdatePointCloud<PlannerCloudPointType>(*(vertical_surface_cloud_->cloud_));

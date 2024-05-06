@@ -536,10 +536,24 @@ void ViewPointManager::CheckViewPointLineOfSightHelper(const Eigen::Vector3i& st
 {
   if (end_sub == start_sub)
     return;
+  
+
   int viewpoint_ind = grid_->Sub2Ind(end_sub);
   geometry_msgs::Point viewpoint_position = GetViewPointPosition(viewpoint_ind);
   std::vector<Eigen::Vector3i> ray_cast_cells;
   misc_utils_ns::RayCast(start_sub, end_sub, max_sub, min_sub, ray_cast_cells);
+
+  float angle = atan2(end_sub.y() - start_sub.y(), end_sub.x() - start_sub.x());
+
+  if ((abs(angle) > 3.14f/4.5f) && (ray_cast_cells.size() > 1))
+  {
+    for (int i = 1; i < ray_cast_cells.size(); i++)
+    {
+      int viewpoint_ind = grid_->Sub2Ind(ray_cast_cells[i]);
+      SetViewPointInLineOfSight(viewpoint_ind, false);
+    }
+    return; 
+  }
   if (ray_cast_cells.size() > 1)
   {
     if (vp_.kLineOfSightStopAtNearestObstacle)

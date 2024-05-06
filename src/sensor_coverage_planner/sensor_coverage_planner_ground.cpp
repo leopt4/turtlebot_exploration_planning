@@ -249,6 +249,8 @@ void SensorCoveragePlanner3D::ExplorationStartCallback(const std_msgs::Bool::Con
 void SensorCoveragePlanner3D::StateEstimationCallback(const nav_msgs::Odometry::ConstPtr& state_estimation_msg)
 {
   pd_.robot_position_ = state_estimation_msg->pose.pose.position;
+  pd_.robot_position_.x = 0.0f;
+  pd_.robot_position_.y = 0.0f;
   // Todo: use a boolean
   if (std::abs(pd_.initial_position_.x()) < 0.01 && std::abs(pd_.initial_position_.y()) < 0.01 &&
       std::abs(pd_.initial_position_.z()) < 0.01)
@@ -312,13 +314,13 @@ void SensorCoveragePlanner3D::RegisteredScanCallback(const sensor_msgs::PointClo
     pd_.registered_scan_stack_->cloud_->header.frame_id = "map";
     pcl::copyPointCloud(*(pd_.registered_scan_stack_->cloud_), *(pd_.keypose_cloud_->cloud_));
 
-    pcl::copyPointCloud(*(pd_.registered_cloud_->cloud_), *(pd_.keypose_cloud_->cloud_));
-    pd_.keypose_cloud_->Publish();
-    pd_.registered_scan_stack_->cloud_->clear();
+    // pcl::copyPointCloud(*(pd_.registered_cloud_->cloud_), *(pd_.keypose_cloud_->cloud_));
+    // pd_.keypose_cloud_->Publish();
+    // pd_.registered_scan_stack_->cloud_->clear();
 
-    // sensor_msgs::PointCloud2 pc_msg;
-    // pcl::toROSMsg(*(pd_.keypose_cloud_->cloud_), pc_msg);
-    // pointcloud_test_pub_.publish(pc_msg);
+    sensor_msgs::PointCloud2 pc_msg;
+    pcl::toROSMsg(*(pd_.keypose_cloud_->cloud_), pc_msg);
+    pointcloud_test_pub_.publish(pc_msg);
 
     keypose_cloud_update_ = true;
   }

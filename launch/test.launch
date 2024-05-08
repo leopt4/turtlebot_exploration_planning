@@ -4,6 +4,8 @@
         <rosparam command="load" file="$(find turtlebot_exploration_planning)/config/$(arg scenario).yaml" />
     </node>
 
-    
+    <!-- <node pkg="turtlebot_exploration_planning" type="EKF_node.py" name="EKF_node">
+        <param name="mode" value="HIL"/>
+    </node> -->
 
 </launch>

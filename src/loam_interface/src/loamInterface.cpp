@@ -43,23 +43,23 @@ class InterfaceHandler
   tf::StampedTransform mapTrans;
 
 
-  ros::Subscriber odom_sub_;
+  // ros::Subscriber odom_sub_;
   ros::Subscriber laser_sub_;
   ros::Publisher odometry_pub_;
   ros::Publisher pcl_pub_;
 
   tf::TransformBroadcaster tfBroadcaster;
 
-  bool frameAInitialized  = false;
-  bool flipRegisteredScan = false;
+  bool frameAInitialized  = true;
+  bool flipRegisteredScan = true;
 
   InterfaceHandler(ros::NodeHandle &nh): nh_(nh)
   {
-    odom_sub_ = nh.subscribe("/turtlebot/kobuki/odom_ground_truth", 1, &InterfaceHandler::odometryCallback, this);
+    // odom_sub_ = nh.subscribe("/turtlebot/kobuki/odom_ground_truth", 1, &InterfaceHandler::odometryCallback, this);
 
     laser_sub_ = nh.subscribe("/cloud_registered_scan", 1, &InterfaceHandler::laserCloudCallback, this);
 
-    odometry_pub_ = nh.advertise<nav_msgs::Odometry> ("/state_estimation", 5);
+    // odometry_pub_ = nh.advertise<nav_msgs::Odometry> ("/state_estimation", 5);
 
     pcl_pub_ = nh.advertise<sensor_msgs::PointCloud2> ("/registered_scan", 5);
 
@@ -76,8 +76,8 @@ class InterfaceHandler
 
     // publish tf sensor messages
     sensorTrans.stamp_ = odom->header.stamp;
-    sensorTrans.frame_id_ = "turtlebot/kobuki/realsense_depth";
-    // sensorTrans.frame_id_ = "camera_depth_frame";
+    // sensorTrans.frame_id_ = "turtlebot/kobuki/realsense_depth";
+    sensorTrans.frame_id_ = "realsense_depth_frame";
     sensorTrans.child_frame_id_ = "sensor";
     sensorTrans.setRotation(tf::Quaternion(0.0, 0.0, 0.0, 1.0));
     sensorTrans.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
@@ -125,8 +125,9 @@ class InterfaceHandler
 
       // Saving the current key frame of the robot
       std::string targetFrame = "map";
-      std::string sourceFrame = "turtlebot/kobuki/realsense_depth";
+      // std::string sourceFrame = "turtlebot/kobuki/realsense_depth";
       // std::string sourceFrame = "camera_depth_frame";
+      std::string sourceFrame = "realsense_depth_optical_frame";
 
       // Lookup transform
       tf::StampedTransform transform;
@@ -138,10 +139,13 @@ class InterfaceHandler
       if (flipRegisteredScan) {
         int laserCloudSize = laserCloudOut->points.size();
         for (int i = 0; i < laserCloudSize; i++) {
-          float temp = laserCloud->points[i].x;
-          laserCloudOut->points[i].x = laserCloudOut->points[i].z;
-          laserCloudOut->points[i].z = laserCloudOut->points[i].y;
-          laserCloudOut->points[i].y = temp;
+          // float temp = laserCloud->points[i].x;
+          // laserCloudOut->points[i].x = laserCloudOut->points[i].z;
+          // laserCloudOut->points[i].z = laserCloudOut->points[i].y;
+          // laserCloudOut->points[i].y = temp;
+          laserCloudOut->points[i].z = laserCloudOut->points[i].z;
+          laserCloudOut->points[i].y = -laserCloudOut->points[i].y;
+          laserCloudOut->points[i].x = laserCloudOut->points[i].x;
         }
       }
 

@@ -2,7 +2,7 @@
 sub_start_exploration_topic_ : /start_exploration
 sub_terrain_map_topic_ : /terrain_map
 sub_terrain_map_ext_topic_ : /terrain_map_ext
-sub_state_estimation_topic_ : /turtlebot/kobuki/odom_ground_truth #/state_estimation_at_scan
+sub_state_estimation_topic_ : /state_estimation_at_scan
 sub_registered_scan_topic_ : /registered_scan
 sub_coverage_boundary_topic_ : /sensor_coverage_planner/coverage_boundary
 sub_viewpoint_boundary_topic_ : /navigation_boundary
@@ -76,13 +76,13 @@ keypose_graph/kAddEdgeCollisionCheckRadius : 0.4
 keypose_graph/kAddEdgeCollisionCheckPointNumThr : 1
 
 # ViewPointManager
-viewpoint_manager/number_x : 150
-viewpoint_manager/number_y : 150
+viewpoint_manager/number_x : 30
+viewpoint_manager/number_y : 30
 viewpoint_manager/number_z : 1
 # viewpoint_manager/resolution_x : 1.2
-viewpoint_manager/resolution_x : 0.2
+viewpoint_manager/resolution_x : 0.3
 # viewpoint_manager/resolution_y : 1.2
-viewpoint_manager/resolution_y : 0.2
+viewpoint_manager/resolution_y : 0.3
 viewpoint_manager/resolution_z : 0.0
 kConnectivityHeightDiffThr : 0.25
 kGreedyViewPointSampleRange : 3
@@ -101,7 +101,7 @@ kViewPointHeightFromTerrainChangeThreshold : 0.6
 kCheckDynamicObstacleCollision : false
 kCollisionFrameCountMax : 3
 
-kSensorRange : 3.0
+kSensorRange : 2.0
 kNeighborRange : 2.0
 kCoverageOcclusionThr : 0.3
 kCoverageDilationRadius : 1.0

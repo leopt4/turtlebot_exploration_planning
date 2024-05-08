@@ -1,0 +1,8 @@
+
+sub_registered_scan_topic_ : /registered_scan
+sub_cloud_registered_scan_topic_ : /cloud_registered_scan
+
+map_frame_ : map
+depth_camera_frame_ : turtlebot/kobuki/realsense_depth
+# depth_camera_frame_ : realsense_depth_optical_frame
+

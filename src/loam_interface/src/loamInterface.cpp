@@ -1,71 +1,47 @@
-#include <math.h>
-#include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <ros/ros.h>
+/**
+ * @file sensor_coverage_planner_ground.cpp
+ * @author Chao Cao (ccao1@andrew.cmu.edu)
+ * @brief Class that does the job of exploration
+ * @version 0.1
+ * @date 2020-06-03
+ *
+ * @copyright Copyright (c) 2021
+ *
+ */
 
-#include <message_filters/subscriber.h>
-#include <message_filters/synchronizer.h>
-#include <message_filters/sync_policies/approximate_time.h>
+#include "loam_interface/loamInterFace.h"
 
-#include <std_msgs/Float32.h>
-#include <nav_msgs/Odometry.h>
-#include <geometry_msgs/PointStamped.h>
-#include <geometry_msgs/PolygonStamped.h>
-#include <sensor_msgs/PointCloud2.h>
-
-#include <tf/transform_datatypes.h>
-#include <tf/transform_broadcaster.h>
-#include <tf/transform_listener.h> // Include tf header
-#include <tf2_ros/transform_listener.h>
-
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl_ros/transforms.h>
-
-
-using namespace std;
-
-const double PI = 3.1415926;
-
-class InterfaceHandler
-{
-  public:
-  ros::NodeHandle &nh_;
-  // Create a buffer for managing transforms
-  tf::TransformListener listener_;
-
-  nav_msgs::Odometry odomData;
-  tf::StampedTransform sensorTrans;
-  tf::StampedTransform mapTrans;
-
-
-  // ros::Subscriber odom_sub_;
-  ros::Subscriber laser_sub_;
-  ros::Publisher odometry_pub_;
-  ros::Publisher pcl_pub_;
-
-  tf::TransformBroadcaster tfBroadcaster;
-
-  bool frameAInitialized  = true;
-  bool flipRegisteredScan = true;
-
-  InterfaceHandler(ros::NodeHandle &nh): nh_(nh)
+InterfaceHandler::InterfaceHandler(ros::NodeHandle &nh, ros::NodeHandle &nh_p)
   {
+    readParameters(nh_p);
     // odom_sub_ = nh.subscribe("/turtlebot/kobuki/odom_ground_truth", 1, &InterfaceHandler::odometryCallback, this);
+    while (!listener_.canTransform(map_frame_, depth_camera_frame_, ros::Time(0))) {
+      ros::Duration(0.1).sleep();
+      ROS_INFO("Waiting for transform between map frame and depth camera frame...");
+    }
+    ROS_INFO("Init Loam Interface successfully.");
 
-    laser_sub_ = nh.subscribe("/cloud_registered_scan", 1, &InterfaceHandler::laserCloudCallback, this);
+    laser_sub_ = nh.subscribe(sub_cloud_registered_scan_topic_, 1, &InterfaceHandler::laserCloudCallback, this);
 
     // odometry_pub_ = nh.advertise<nav_msgs::Odometry> ("/state_estimation", 5);
 
-    pcl_pub_ = nh.advertise<sensor_msgs::PointCloud2> ("/registered_scan", 5);
+    pcl_pub_ = nh.advertise<sensor_msgs::PointCloud2> (sub_registered_scan_topic_, 5);
 
   };
 
-  void odometryCallback(const nav_msgs::Odometry::ConstPtr& odom)
+bool InterfaceHandler::readParameters(ros::NodeHandle& nh)
+  {
+    map_frame_ = misc_utils_ns::getParam<std::string>(nh, "map_frame_", "map");
+    depth_camera_frame_ = misc_utils_ns::getParam<std::string>(nh, "depth_camera_frame_", "turtlebot/kobuki/realsense_depth");
+
+    sub_cloud_registered_scan_topic_ =
+      misc_utils_ns::getParam<std::string>(nh, "sub_cloud_registered_scan_topic_", "/cloud_registered_scan");
+
+    sub_registered_scan_topic_ =
+      misc_utils_ns::getParam<std::string>(nh, "sub_registered_scan_topic_", "/registered_scan");
+  }
+
+void InterfaceHandler::odometryCallback(const nav_msgs::Odometry::ConstPtr& odom)
   {
     odomData = *odom;
 
@@ -114,59 +90,48 @@ class InterfaceHandler
     frameAInitialized = true;
   }
 
-  void laserCloudCallback(const sensor_msgs::PointCloud2ConstPtr& laserCloudIn)
+void InterfaceHandler::laserCloudCallback(const sensor_msgs::PointCloud2ConstPtr& laserCloudIn)
   {
     if (frameAInitialized)
     {
-      pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloud(new pcl::PointCloud<pcl::PointXYZI>());
-      pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudOut(new pcl::PointCloud<pcl::PointXYZI>());
+      pcl::PointCloud<pcl::PointXYZ>::Ptr laserCloud(new pcl::PointCloud<pcl::PointXYZ>());
+      pcl::PointCloud<pcl::PointXYZ>::Ptr laserCloudOut(new pcl::PointCloud<pcl::PointXYZ>());
       laserCloud->clear();
       pcl::fromROSMsg(*laserCloudIn, *laserCloud);
-
-      // Saving the current key frame of the robot
-      std::string targetFrame = "map";
-      // std::string sourceFrame = "turtlebot/kobuki/realsense_depth";
-      // std::string sourceFrame = "camera_depth_frame";
-      std::string sourceFrame = "realsense_depth_optical_frame";
-
+      
       // Lookup transform
       tf::StampedTransform transform;
 
-      listener_.lookupTransform(targetFrame, sourceFrame, ros::Time(), transform);
+      listener_.lookupTransform(map_frame_, depth_camera_frame_, ros::Time(), transform);
 
       pcl_ros::transformPointCloud(*laserCloud, *laserCloudOut, transform);
 
       if (flipRegisteredScan) {
         int laserCloudSize = laserCloudOut->points.size();
         for (int i = 0; i < laserCloudSize; i++) {
-          // float temp = laserCloud->points[i].x;
-          // laserCloudOut->points[i].x = laserCloudOut->points[i].z;
-          // laserCloudOut->points[i].z = laserCloudOut->points[i].y;
-          // laserCloudOut->points[i].y = temp;
-          laserCloudOut->points[i].z = laserCloudOut->points[i].z;
-          laserCloudOut->points[i].y = -laserCloudOut->points[i].y;
-          laserCloudOut->points[i].x = laserCloudOut->points[i].x;
+          float temp = laserCloud->points[i].x;
+          laserCloudOut->points[i].x = laserCloudOut->points[i].z;
+          laserCloudOut->points[i].z = laserCloudOut->points[i].y;
+          laserCloudOut->points[i].y = temp;
         }
       }
 
       // publish registered scan messages
       sensor_msgs::PointCloud2 laserCloud2;
       pcl::toROSMsg(*laserCloudOut, laserCloud2);
-      laserCloud2.header.stamp = laserCloudIn->header.stamp;
-      laserCloud2.header.frame_id = targetFrame;
+      laserCloud2.header.stamp    = laserCloudIn->header.stamp;
+      laserCloud2.header.frame_id = map_frame_;
       pcl_pub_.publish(laserCloud2);
     }
   }
-};
-
-
 
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "loamInterface");
   ros::NodeHandle nh;
+  ros::NodeHandle nh_p("~");
 
-  InterfaceHandler handler(nh);
+  InterfaceHandler loaminterface(nh, nh_p);
 
   ros::spin();
 

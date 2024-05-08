@@ -15,8 +15,6 @@ pub_runtime_topic_ : /runtime
 pub_waypoint_topic_ : /way_point
 pub_momentum_activation_count_topic_ : momentum_activation_count
 
-
-
 kAutoStart : true
 kRushHome : true
 kUseTerrainHeight : false
@@ -78,13 +76,13 @@ keypose_graph/kAddEdgeCollisionCheckRadius : 0.4
 keypose_graph/kAddEdgeCollisionCheckPointNumThr : 1
 
 # ViewPointManager
-viewpoint_manager/number_x : 30
-viewpoint_manager/number_y : 30
+viewpoint_manager/number_x : 50
+viewpoint_manager/number_y : 50
 viewpoint_manager/number_z : 1
 # viewpoint_manager/resolution_x : 1.2
-viewpoint_manager/resolution_x : 0.3
+viewpoint_manager/resolution_x : 0.2
 # viewpoint_manager/resolution_y : 1.2
-viewpoint_manager/resolution_y : 0.3
+viewpoint_manager/resolution_y : 0.2
 viewpoint_manager/resolution_z : 0.0
 kConnectivityHeightDiffThr : 0.25
 kGreedyViewPointSampleRange : 3

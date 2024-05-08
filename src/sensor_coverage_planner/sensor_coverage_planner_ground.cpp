@@ -249,8 +249,8 @@ void SensorCoveragePlanner3D::ExplorationStartCallback(const std_msgs::Bool::Con
 void SensorCoveragePlanner3D::StateEstimationCallback(const nav_msgs::Odometry::ConstPtr& state_estimation_msg)
 {
   pd_.robot_position_ = state_estimation_msg->pose.pose.position;
-  pd_.robot_position_.x = 0.0f;
-  pd_.robot_position_.y = 0.0f;
+  // pd_.robot_position_.x = 0.0f;
+  // pd_.robot_position_.y = 0.0f;
   pd_.robot_position_.z =-0.4f;
   // Todo: use a boolean
   if (std::abs(pd_.initial_position_.x()) < 0.01 && std::abs(pd_.initial_position_.y()) < 0.01 &&

@@ -2,10 +2,15 @@
     <arg name="scenario" default="garage"/>
     <node pkg="turtlebot_exploration_planning" type="tare_planner_node" name="tare_planner_node" output="screen" ns="sensor_coverage_planner">
         <rosparam command="load" file="$(find turtlebot_exploration_planning)/config/$(arg scenario).yaml" />
-    </node>
+    </node> 
 
     <!-- <node pkg="turtlebot_exploration_planning" type="EKF_node.py" name="EKF_node">
         <param name="mode" value="HIL"/>
+    </node> -->
+
+    <!-- Mapping between StoneFish simulator and TARE planner -->
+    <!-- <node pkg="turtlebot_exploration_planning" type="loamInterface" name="loamInterface" output="screen" required="true">
+        <param name="sendTF" type="bool" value="true" />
     </node> -->
 
 </launch>

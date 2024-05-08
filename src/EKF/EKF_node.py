@@ -75,8 +75,9 @@ class EKF:
     # Run EKF Filter with frequency of odometry reading
     def get_odom(self, odom):
         # Read encoder
-        if self.odom.read_encoder(odom) and self.ekf_filter is not None:
-            self.ekf_filter.gotNewEncoderData()
+        if (self.mode == "HIL" and len(odom.name) == 2) or self.mode == "SIL":
+            if self.odom.read_encoder(odom) and self.ekf_filter is not None:
+                self.ekf_filter.gotNewEncoderData()
 
         if self.ekf_filter is not None:
             # Run EKF Filter
